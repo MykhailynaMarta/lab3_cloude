@@ -41,54 +41,65 @@ function App() {
             console.log("Selected image:", image);
             console.log("Prompt:", prompt);
 
-            const message = {
-                role: "user",
-                content: prompt
-            };
+            if (model === "snowflake-arctic-embed2:latest") {
+  // EMBEDDING MODEL
+  const response = await fetch(`${host}/api/embed`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: model,
+      input: prompt
+    })
+  });
 
-            if (image) {
-                message.images = [
-                    await convertImageToBase64(image)
-                ];
-            }
+  if (!response.ok) {
+    throw new Error(`HTTP error: ${response.status}`);
+  }
 
-            const response = await fetch(`${host}/api/chat`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    model: model,
-                    messages: [message],
-                    stream: stream,
-                    options: {
-                        num_ctx: 2048,
-                        num_predict: 512
-                    }
-                })
-            });
+  const data = await response.json();
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(
-                    errorData.error || `HTTP error: ${response.status}`
-                );
-            }
+  setOutput(
+    `Embedding успішно створено!\n
+Розмірність вектора: ${data.embeddings[0].length}\n
+Перші 10 значень:\n${data.embeddings[0].slice(0, 10).join(", ")}`
+  );
 
-            console.log("HTTP status:", response.status);
+} else {
+  // CHAT MODEL
+  const message = { role: "user", content: prompt };
 
-            const responseText = await response.text();
+  if (image) {
+    message.images = [await convertImageToBase64(image)];
+  }
 
-            console.log("Ollama raw response:", responseText);
+  const response = await fetch(`${host}/api/chat`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [message],
+      stream: stream,
+      options: { num_ctx: 2048, num_predict: 512 }
+    })
+  });
 
-            const data = JSON.parse(responseText);
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || `HTTP error: ${response.status}`);
+  }
 
-            setOutput(
-                data.message?.content ||
-                data.message?.thinking ||
-                "Model returned an empty response"
-            );
+  const data = await response.json();
 
+  setOutput(
+    data.message?.content ||
+    data.message?.thinking ||
+    "Model returned an empty response"
+  );
+}
         } catch (error) {
             console.error(error);
             setOutput(`Error: ${error.message}`);
