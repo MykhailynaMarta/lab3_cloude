@@ -92,6 +92,43 @@ function App() {
     throw new Error(errorData.error || `HTTP error: ${response.status}`);
   }
 
+if (stream) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+
+  let result = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+
+    if (done) break;
+
+    const chunk = decoder.decode(value, { stream: true });
+    const lines = chunk.split("\n");
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+
+      const data = JSON.parse(line);
+
+      const content =
+        data.message?.content ||
+        data.message?.thinking ||
+        "";
+
+      result += content;
+      setOutput(result);
+    }
+  }
+
+  const remaining = decoder.decode();
+  if (remaining.trim()) {
+    const data = JSON.parse(remaining);
+    result += data.message?.content || data.message?.thinking || "";
+    setOutput(result);
+  }
+
+} else {
   const data = await response.json();
 
   setOutput(
@@ -99,6 +136,7 @@ function App() {
     data.message?.thinking ||
     "Model returned an empty response"
   );
+}
 }
         } catch (error) {
             console.error(error);
