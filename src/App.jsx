@@ -113,7 +113,6 @@ if (stream) {
 
       const content =
         data.message?.content ||
-        data.message?.thinking ||
         "";
 
       result += content;
@@ -124,7 +123,7 @@ if (stream) {
   const remaining = decoder.decode();
   if (remaining.trim()) {
     const data = JSON.parse(remaining);
-    result += data.message?.content || data.message?.thinking || "";
+    result += data.message?.content || "";
     setOutput(result);
   }
 
